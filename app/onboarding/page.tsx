@@ -1,14 +1,35 @@
+import { createClient } from "@supabase/supabase-js";
 import StapleForm from "./StapleForm";
 
-export default function OnboardingPage() {
+export const dynamic = "force-dynamic";
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SECRET_KEY!
+);
+
+export default async function OnboardingPage() {
+  const { data: watcher } = await supabase
+    .from("watchers")
+    .select("zip_code, staples(search_term)")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const staples = (watcher?.staples ?? []) as Array<{ search_term: string }>;
+
   return (
-    <main>
-      <h1 className="text-2xl font-bold text-center mt-8">PriceSniff</h1>
-      <p className="text-center text-gray-600 mb-4">
-        One-time setup. No receipts, no bank connection — just a push alert
-        when your groceries get quietly more expensive.
+    <main className="mx-auto w-full max-w-2xl px-4 py-12">
+      <h1 className="text-center text-4xl font-extrabold text-ink">PriceSniff</h1>
+      <p className="mx-auto mt-3 max-w-md text-center text-ink/60">
+        {watcher
+          ? "Update your zip code or staple list. Saving replaces what you had before."
+          : "One-time setup. No receipts, no bank connection."}
       </p>
-      <StapleForm />
+      <StapleForm
+        initialZip={watcher?.zip_code ?? ""}
+        initialStaples={staples.map((s) => s.search_term)}
+      />
     </main>
   );
 }
