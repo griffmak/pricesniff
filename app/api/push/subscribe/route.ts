@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { zipCode, staples } = body as {
     zipCode: string;
-    staples: string[];
+    staples: Array<{ searchTerm: string; productId: string; description: string }>;
   };
 
   if (!zipCode || !staples?.length) {
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     // Single-tenant: there is only ever one watcher.
     const { data: existing, error: existingError } = await supabase
       .from("watchers")
-      .select("id, zip_code, staples(id, search_term)")
+      .select("id, zip_code, staples(id, search_term, product_id)")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -42,11 +42,19 @@ export async function POST(req: NextRequest) {
       const currentStaples = (existing.staples ?? []) as Array<{
         id: string;
         search_term: string;
+        product_id: string | null;
       }>;
 
-      const removed = currentStaples.filter((s) => !staples.includes(s.search_term));
+      const submittedIds = new Set(staples.map((s) => s.productId));
+
+      // Legacy staples (no product_id yet) have nothing to match against submittedIds,
+      // so they'd always look "removed" here. Match on product_id where present, else
+      // fall back to search_term match so untouched legacy rows aren't dropped.
+      const removed = currentStaples.filter((s) =>
+        s.product_id ? !submittedIds.has(s.product_id) : !staples.some((n) => n.searchTerm === s.search_term)
+      );
       const added = staples.filter(
-        (term) => !currentStaples.some((s) => s.search_term === term)
+        (s) => !currentStaples.some((cur) => cur.product_id === s.productId)
       );
 
       if (removed.length > 0) {
@@ -60,9 +68,14 @@ export async function POST(req: NextRequest) {
       }
 
       if (added.length > 0) {
-        const { error } = await supabase
-          .from("staples")
-          .insert(added.map((term) => ({ watcher_id: existing.id, search_term: term })));
+        const { error } = await supabase.from("staples").insert(
+          added.map((s) => ({
+            watcher_id: existing.id,
+            search_term: s.searchTerm,
+            product_id: s.productId,
+            tracked_description: s.description,
+          }))
+        );
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
@@ -90,9 +103,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: watcherError.message }, { status: 500 });
     }
 
-    const { error: staplesError } = await supabase
-      .from("staples")
-      .insert(staples.map((term) => ({ watcher_id: watcher.id, search_term: term })));
+    const { error: staplesError } = await supabase.from("staples").insert(
+      staples.map((s) => ({
+        watcher_id: watcher.id,
+        search_term: s.searchTerm,
+        product_id: s.productId,
+        tracked_description: s.description,
+      }))
+    );
 
     if (staplesError) {
       return NextResponse.json({ error: staplesError.message }, { status: 500 });
