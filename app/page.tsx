@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import StapleCard from "./StapleCard";
 import StapleForm from "./onboarding/StapleForm";
+import NoseLogo from "./NoseLogo";
 import type { Snapshot } from "@/lib/dashboard";
 
 // Always read fresh from the database — a cached dashboard defeats the purpose.
@@ -32,7 +33,10 @@ export default async function Home() {
   if (!watcher) {
     return (
       <main className="mx-auto w-full max-w-2xl px-4 py-12">
-        <h1 className="text-center text-4xl font-extrabold text-ink">PriceSniff</h1>
+        <div className="flex items-center justify-center gap-3">
+          <NoseLogo className="h-12 w-12" />
+          <h1 className="text-4xl font-extrabold text-ink">PriceSniff</h1>
+        </div>
         <p className="mx-auto mt-3 max-w-md text-center text-ink/60">
           One-time setup. No receipts, no bank connection — just an honest look at what
           your groceries actually cost today.
@@ -80,7 +84,10 @@ export default async function Home() {
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-10">
       <header className="mb-8 text-center">
-        <h1 className="text-4xl font-extrabold text-ink">PriceSniff</h1>
+        <div className="flex items-center justify-center gap-3">
+          <NoseLogo className="h-12 w-12" />
+          <h1 className="text-4xl font-extrabold text-ink">PriceSniff</h1>
+        </div>
         <p className="mt-2 text-sm text-ink/60">
           Tracking {staples.length} staple{staples.length === 1 ? "" : "s"} near{" "}
           {watcher.zip_code} · checked once daily
