@@ -7,7 +7,7 @@ create table watchers (
   id uuid primary key default gen_random_uuid(),
   zip_code text not null,
   location_id text not null,       -- Kroger locationId nearest to zip_code
-  push_subscription jsonb not null, -- full PushSubscription object from the browser
+  push_subscription jsonb,         -- nullable: push is tabled, onboarding no longer collects it
   created_at timestamptz not null default now()
 );
 
@@ -24,6 +24,9 @@ create table price_snapshots (
   product_id text not null,         -- Kroger productId of the matched item
   product_description text not null,
   price numeric not null,
+  alt_product_id text,              -- cheapest same-search-term alternative, stored daily
+  alt_product_description text,
+  alt_price numeric,
   captured_at timestamptz not null default now()
 );
 
