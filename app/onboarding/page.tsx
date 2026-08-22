@@ -12,12 +12,16 @@ const supabase = createClient(
 export default async function OnboardingPage() {
   const { data: watcher } = await supabase
     .from("watchers")
-    .select("zip_code, staples(search_term)")
+    .select("zip_code, staples(search_term, product_id, tracked_description)")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  const staples = (watcher?.staples ?? []) as Array<{ search_term: string }>;
+  const staples = (watcher?.staples ?? []) as Array<{
+    search_term: string;
+    product_id: string | null;
+    tracked_description: string | null;
+  }>;
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-12">
@@ -32,7 +36,13 @@ export default async function OnboardingPage() {
       </p>
       <StapleForm
         initialZip={watcher?.zip_code ?? ""}
-        initialStaples={staples.map((s) => s.search_term)}
+        initialStaples={staples
+          .filter((s) => s.product_id !== null)
+          .map((s) => ({
+            searchTerm: s.search_term,
+            productId: s.product_id as string,
+            description: s.tracked_description ?? s.search_term,
+          }))}
       />
     </main>
   );
