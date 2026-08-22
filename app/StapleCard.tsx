@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { comparison, sparklinePoints, priceOnDaysAgo } from "@/lib/dashboard";
 import type { Snapshot } from "@/lib/dashboard";
 
@@ -38,11 +39,13 @@ function DeltaBadge({
 }
 
 export default function StapleCard({
+  id,
   searchTerm,
   snapshots,
   now,
   latest,
 }: {
+  id: string;
   searchTerm: string;
   snapshots: Snapshot[];
   now: Date;
@@ -56,7 +59,11 @@ export default function StapleCard({
   if (!latest) {
     return (
       <section className="rounded-2xl bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-bold capitalize text-ink">{searchTerm}</h2>
+        <h2 className="text-lg font-bold capitalize text-ink">
+          <Link href={`/staple/${id}`} className="hover:underline">
+            {searchTerm}
+          </Link>
+        </h2>
         <p className="mt-2 text-sm text-ink/50">
           Waiting for the first price check. Prices are collected once a day.
         </p>
@@ -76,7 +83,11 @@ export default function StapleCard({
   return (
     <section className="rounded-2xl bg-white p-5 shadow-sm">
       <div className="flex items-baseline justify-between gap-4">
-        <h2 className="text-lg font-bold capitalize text-ink">{searchTerm}</h2>
+        <h2 className="text-lg font-bold capitalize text-ink">
+          <Link href={`/staple/${id}`} className="hover:underline">
+            {searchTerm}
+          </Link>
+        </h2>
         <div className="text-2xl font-extrabold text-ink">${latest.price.toFixed(2)}</div>
       </div>
 
