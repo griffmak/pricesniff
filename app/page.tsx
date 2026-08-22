@@ -98,6 +98,7 @@ export default async function Home() {
         {cards.map(({ staple, snapshots, latest }) => (
           <StapleCard
             key={staple.id}
+            id={staple.id}
             searchTerm={staple.search_term}
             snapshots={snapshots}
             now={now}
