@@ -50,21 +50,28 @@ export default function StapleForm({
   useEffect(() => {
     if (!locationId || term.trim().length < 2) {
       setResults([]);
+      setSearching(false);
       return;
     }
+    let cancelled = false;
     setSearching(true);
     const handle = setTimeout(async () => {
       try {
         const res = await fetch(
           `/api/kroger/search?term=${encodeURIComponent(term)}&locationId=${locationId}`
         );
-        const body = await res.json();
-        setResults(res.ok ? body.products : []);
+        const body = await res.json().catch(() => null);
+        if (!cancelled) setResults(res.ok && body ? body.products : []);
+      } catch {
+        if (!cancelled) setResults([]);
       } finally {
-        setSearching(false);
+        if (!cancelled) setSearching(false);
       }
     }, 300);
-    return () => clearTimeout(handle);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
   }, [term, locationId]);
 
   function addStaple(product: SearchResult) {
