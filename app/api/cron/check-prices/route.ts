@@ -43,11 +43,18 @@ export async function GET(req: NextRequest) {
         .limit(1)
         .maybeSingle();
 
+      // Computed once per run and stored, so the dashboard never needs a live
+      // Kroger call to show a cheaper swap.
+      const swap = cheapestAlternative(products, tracked.productId);
+
       await supabase.from("price_snapshots").insert({
         staple_id: staple.id,
         product_id: tracked.productId,
         product_description: tracked.description,
         price: tracked.price,
+        alt_product_id: swap?.productId ?? null,
+        alt_product_description: swap?.description ?? null,
+        alt_price: swap?.price ?? null,
       });
 
       const { isSpike, percentChange } = detectPriceSpike({
@@ -55,13 +62,14 @@ export async function GET(req: NextRequest) {
         currentPrice: tracked.price,
       });
 
-      if (isSpike) {
-        const swap = cheapestAlternative(products, tracked.productId);
+      // Push delivery is currently broken and tabled; watchers created after v2
+      // onboarding have no subscription at all. Skip rather than throw.
+      if (isSpike && watcher.push_subscription) {
         const swapText = swap
           ? ` Try "${swap.description}" instead — $${swap.price.toFixed(2)}.`
           : "";
         await sendPushNotification(
-          watcher.push_subscription as any,
+          watcher.push_subscription as Parameters<typeof sendPushNotification>[0],
           {
             title: `${tracked.description} is up ${percentChange.toFixed(0)}%`,
             body: `Now $${tracked.price.toFixed(2)}.${swapText}`,
