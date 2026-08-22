@@ -22,12 +22,19 @@ export async function POST(req: NextRequest) {
     const locationId = await findNearestLocationId(zipCode);
 
     // Single-tenant: there is only ever one watcher.
-    const { data: existing } = await supabase
+    const { data: existing, error: existingError } = await supabase
       .from("watchers")
       .select("id, zip_code, staples(id, search_term)")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    // A failed read here must NOT be treated as "no watcher exists" — that would
+    // silently fall through to the full-reset branch below and destroy price
+    // history on a transient error instead of surfacing a failure.
+    if (existingError) {
+      return NextResponse.json({ error: existingError.message }, { status: 500 });
+    }
 
     // Same zip => same store => existing price history is still comparable. Keep the
     // watcher and diff the staple list so unchanged staples keep their snapshots.
