@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findNearestLocationId, searchProducts } from "./kroger";
+import { findNearestLocationId, searchProducts, getProductById } from "./kroger";
 
 // Manual integration test: run with `npx vitest run lib/kroger.test.ts`
 // after setting real KROGER_CLIENT_ID/SECRET in .env.local. Skipped by
@@ -15,5 +15,13 @@ describe.skip("Kroger API (manual integration test)", () => {
     const products = await searchProducts("eggs", locationId);
     expect(products.length).toBeGreaterThan(0);
     expect(products[0]).toHaveProperty("price");
+  });
+
+  it("fetches a single product by id", async () => {
+    const locationId = await findNearestLocationId("45202");
+    const [firstResult] = await searchProducts("eggs", locationId);
+    const product = await getProductById(firstResult.productId, locationId);
+    expect(product.productId).toBe(firstResult.productId);
+    expect(product).toHaveProperty("price");
   });
 });

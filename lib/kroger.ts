@@ -92,3 +92,37 @@ export async function searchProducts(
     })
     .filter((p): p is KrogerProduct => p !== null);
 }
+
+export async function getProductById(
+  productId: string,
+  locationId: string
+): Promise<KrogerProduct> {
+  const token = await getKrogerToken();
+  const url = `${API_BASE}/products/${encodeURIComponent(
+    productId
+  )}?filter.locationId=${locationId}`;
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Kroger product lookup failed: ${res.status} ${await res.text()}`);
+  }
+
+  const data = (await res.json()) as {
+    data: {
+      productId: string;
+      description: string;
+      items?: Array<{ price?: { regular?: number; promo?: number } }>;
+    };
+  };
+
+  const priceInfo = data.data.items?.[0]?.price;
+  const price = priceInfo?.regular ?? priceInfo?.promo;
+  if (price == null) {
+    throw new Error(`Kroger product ${productId} has no price data`);
+  }
+
+  return { productId: data.data.productId, description: data.data.description, price };
+}
