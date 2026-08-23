@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
 
       // Computed once per run and stored, so the dashboard never needs a live
       // Kroger call to show a cheaper swap.
-      const swap = cheapestAlternative(products, tracked.productId);
+      const swap = cheapestAlternative(products, tracked.productId, tracked.price);
 
       await supabase.from("price_snapshots").insert({
         staple_id: staple.id,

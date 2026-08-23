@@ -20,9 +20,11 @@ export function detectPriceSpike(input: {
 
 export function cheapestAlternative(
   products: KrogerProduct[],
-  trackedProductId: string
+  trackedProductId: string,
+  trackedPrice: number
 ): KrogerProduct | null {
   const alternatives = products.filter((p) => p.productId !== trackedProductId);
   if (alternatives.length === 0) return null;
-  return alternatives.reduce((cheapest, p) => (p.price < cheapest.price ? p : cheapest));
+  const cheapest = alternatives.reduce((a, b) => (b.price < a.price ? b : a));
+  return cheapest.price < trackedPrice ? cheapest : null;
 }

@@ -10,6 +10,10 @@ const supabase = createClient(
   process.env.SUPABASE_SECRET_KEY!
 );
 
+function krogerSearchUrl(description: string): string {
+  return `https://www.kroger.com/search?query=${encodeURIComponent(description)}`;
+}
+
 type SnapshotRow = {
   price: number;
   captured_at: string;
@@ -57,22 +61,44 @@ export default async function StapleDetailPage({
         <table className="mt-6 w-full text-left text-sm">
           <thead>
             <tr className="border-b border-ink/20 text-ink/50">
-              <th className="py-2">Date</th>
-              <th className="py-2">Price</th>
-              <th className="py-2">Product</th>
+              <th className="py-2 pr-4">Date</th>
+              <th className="py-2 pr-4">Price</th>
+              <th className="py-2 pr-4">Product</th>
               <th className="py-2">Cheaper alternative</th>
             </tr>
           </thead>
           <tbody>
             {snapshots.map((s) => (
               <tr key={s.captured_at} className="border-b border-ink/10">
-                <td className="py-2">{new Date(s.captured_at).toLocaleDateString()}</td>
-                <td className="py-2 font-medium">${Number(s.price).toFixed(2)}</td>
-                <td className="py-2">{s.product_description}</td>
+                <td className="whitespace-nowrap py-2 pr-4">
+                  {new Date(s.captured_at).toLocaleDateString()}
+                </td>
+                <td className="whitespace-nowrap py-2 pr-4 font-medium">
+                  ${Number(s.price).toFixed(2)}
+                </td>
+                <td className="py-2 pr-4">
+                  <a
+                    href={krogerSearchUrl(s.product_description)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    {s.product_description}
+                  </a>
+                </td>
                 <td className="py-2">
-                  {s.alt_product_description && s.alt_price != null
-                    ? `${s.alt_product_description} — $${Number(s.alt_price).toFixed(2)}`
-                    : "—"}
+                  {s.alt_product_description && s.alt_price != null ? (
+                    <a
+                      href={krogerSearchUrl(s.alt_product_description)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline"
+                    >
+                      {s.alt_product_description} — ${Number(s.alt_price).toFixed(2)}
+                    </a>
+                  ) : (
+                    "—"
+                  )}
                 </td>
               </tr>
             ))}
