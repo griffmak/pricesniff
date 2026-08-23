@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { searchProducts } from "@/lib/kroger";
+import { searchProducts, getProductById } from "@/lib/kroger";
 import { detectPriceSpike, cheapestAlternative } from "@/lib/priceWatch";
 import { sendPushNotification } from "@/lib/push";
 
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   const { data: watchers, error } = await supabase
     .from("watchers")
-    .select("id, location_id, push_subscription, staples(id, search_term)");
+    .select("id, location_id, push_subscription, staples(id, search_term, product_id)");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -27,13 +27,31 @@ export async function GET(req: NextRequest) {
   let alertsSent = 0;
 
   for (const watcher of watchers) {
-    for (const staple of watcher.staples as Array<{ id: string; search_term: string }>) {
+    for (const staple of watcher.staples as Array<{
+      id: string;
+      search_term: string;
+      product_id: string | null;
+    }>) {
       checked++;
-      const products = await searchProducts(staple.search_term, watcher.location_id);
-      if (products.length === 0) continue;
 
-      // The tracked product is the top search result for this staple's term.
-      const tracked = products[0];
+      let tracked: { productId: string; description: string; price: number };
+      let products;
+
+      if (staple.product_id) {
+        try {
+          tracked = await getProductById(staple.product_id, watcher.location_id);
+        } catch {
+          // Locked product is gone/discontinued/unreachable this run — skip it rather
+          // than aborting the rest of this watcher's staples.
+          continue;
+        }
+        products = await searchProducts(staple.search_term, watcher.location_id);
+      } else {
+        // Legacy staple: no locked product_id, keep today's top-search-result behavior.
+        products = await searchProducts(staple.search_term, watcher.location_id);
+        if (products.length === 0) continue;
+        tracked = products[0];
+      }
 
       const { data: lastSnapshot } = await supabase
         .from("price_snapshots")
