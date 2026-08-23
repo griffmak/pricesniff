@@ -29,9 +29,9 @@ describe("detectPriceSpike", () => {
 describe("cheapestAlternative", () => {
   it("returns the lowest-priced product excluding the tracked one, when it's actually cheaper", () => {
     const products: KrogerProduct[] = [
-      { productId: "A", description: "Name Brand Eggs, 12ct", price: 4.5 },
-      { productId: "B", description: "Kroger Brand Eggs, 12ct", price: 3.2 },
-      { productId: "C", description: "Organic Eggs, 12ct", price: 6.0 },
+      { productId: "A", description: "Name Brand Eggs, 12ct", price: 4.5, brand: null, size: null, category: null },
+      { productId: "B", description: "Kroger Brand Eggs, 12ct", price: 3.2, brand: null, size: null, category: null },
+      { productId: "C", description: "Organic Eggs, 12ct", price: 6.0, brand: null, size: null, category: null },
     ];
     const result = cheapestAlternative(products, "A", 4.5);
     expect(result?.productId).toBe("B");
@@ -39,24 +39,24 @@ describe("cheapestAlternative", () => {
 
   it("returns null when the tracked product is the only match", () => {
     const products: KrogerProduct[] = [
-      { productId: "A", description: "Name Brand Eggs, 12ct", price: 4.5 },
+      { productId: "A", description: "Name Brand Eggs, 12ct", price: 4.5, brand: null, size: null, category: null },
     ];
     expect(cheapestAlternative(products, "A", 4.5)).toBeNull();
   });
 
   it("returns null when every alternative is more expensive than the tracked price", () => {
     const products: KrogerProduct[] = [
-      { productId: "A", description: "Simple Truth Cage Free Eggs, 12ct", price: 2.79 },
-      { productId: "B", description: "Kroger Brand Eggs, 12ct", price: 3.99 },
-      { productId: "C", description: "Organic Eggs, 12ct", price: 6.0 },
+      { productId: "A", description: "Simple Truth Cage Free Eggs, 12ct", price: 2.79, brand: null, size: null, category: null },
+      { productId: "B", description: "Kroger Brand Eggs, 12ct", price: 3.99, brand: null, size: null, category: null },
+      { productId: "C", description: "Organic Eggs, 12ct", price: 6.0, brand: null, size: null, category: null },
     ];
     expect(cheapestAlternative(products, "A", 2.79)).toBeNull();
   });
 
   it("returns the alternative when it ties the tracked price only if strictly cheaper", () => {
     const products: KrogerProduct[] = [
-      { productId: "A", description: "Tracked", price: 3.0 },
-      { productId: "B", description: "Same price", price: 3.0 },
+      { productId: "A", description: "Tracked", price: 3.0, brand: null, size: null, category: null },
+      { productId: "B", description: "Same price", price: 3.0, brand: null, size: null, category: null },
     ];
     expect(cheapestAlternative(products, "A", 3.0)).toBeNull();
   });

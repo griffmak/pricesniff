@@ -55,7 +55,40 @@ export type KrogerProduct = {
   productId: string;
   description: string;
   price: number; // regular price; falls back to promo if regular is missing
+  brand: string | null;
+  size: string | null; // package size, e.g. "1 gal"
+  category: string | null; // first Kroger category, drives the UI icon
 };
+
+/** The raw shape we read off a Kroger product payload. Everything past productId,
+ *  description, and a price is optional — this account's responses do not always
+ *  carry brand/size/category, and a missing one must not drop the product. */
+type RawKrogerProduct = {
+  productId: string;
+  description: string;
+  brand?: string;
+  categories?: string[];
+  items?: Array<{ size?: string; price?: { regular?: number; promo?: number } }>;
+};
+
+/**
+ * One raw Kroger product → our shape, or null when it has no price at this
+ * location. Null is a normal outcome (out-of-stock, not carried), not an error.
+ */
+export function parseProduct(raw: RawKrogerProduct): KrogerProduct | null {
+  const priceInfo = raw.items?.[0]?.price;
+  const price = priceInfo?.regular ?? priceInfo?.promo;
+  if (price == null) return null;
+
+  return {
+    productId: raw.productId,
+    description: raw.description,
+    price,
+    brand: raw.brand ?? null,
+    size: raw.items?.[0]?.size ?? null,
+    category: raw.categories?.[0] ?? null,
+  };
+}
 
 export async function searchProducts(
   term: string,
@@ -74,22 +107,10 @@ export async function searchProducts(
     throw new Error(`Kroger product search failed: ${res.status} ${await res.text()}`);
   }
 
-  const data = (await res.json()) as {
-    data: Array<{
-      productId: string;
-      description: string;
-      items?: Array<{ price?: { regular?: number; promo?: number } }>;
-    }>;
-  };
+  const data = (await res.json()) as { data: RawKrogerProduct[] };
 
   return data.data
-    .map((item) => {
-      const priceInfo = item.items?.[0]?.price;
-      const price = priceInfo?.regular ?? priceInfo?.promo;
-      return price != null
-        ? { productId: item.productId, description: item.description, price }
-        : null;
-    })
+    .map(parseProduct)
     .filter((p): p is KrogerProduct => p !== null);
 }
 
@@ -110,19 +131,11 @@ export async function getProductById(
     throw new Error(`Kroger product lookup failed: ${res.status} ${await res.text()}`);
   }
 
-  const data = (await res.json()) as {
-    data: {
-      productId: string;
-      description: string;
-      items?: Array<{ price?: { regular?: number; promo?: number } }>;
-    };
-  };
+  const data = (await res.json()) as { data: RawKrogerProduct };
 
-  const priceInfo = data.data.items?.[0]?.price;
-  const price = priceInfo?.regular ?? priceInfo?.promo;
-  if (price == null) {
+  const product = parseProduct(data.data);
+  if (product == null) {
     throw new Error(`Kroger product ${productId} has no price data`);
   }
-
-  return { productId: data.data.productId, description: data.data.description, price };
+  return product;
 }
