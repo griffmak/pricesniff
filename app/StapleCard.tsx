@@ -1,7 +1,13 @@
-import Link from "next/link";
-import { Minus, Tag, TrendingDown, TrendingUp } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { ChevronDown, Minus, Tag, TrendingDown, TrendingUp } from "lucide-react";
 import { comparison, sparklinePoints, priceOnDaysAgo } from "@/lib/dashboard";
 import type { Snapshot } from "@/lib/dashboard";
+import { CategoryBadge } from "@/lib/categoryIcon";
+import PriceChart from "./PriceChart";
+import AlternativesList from "./AlternativesList";
+import type { Alternative } from "./AlternativesList";
 
 function DeltaBadge({
   label,
@@ -16,7 +22,8 @@ function DeltaBadge({
 }) {
   const delta = comparison(current, previous);
   const flat = delta != null && Math.abs(delta.deltaAbs) < 0.005;
-  const direction: "down" | "up" | "none" = !delta || flat ? "none" : delta.deltaAbs > 0 ? "up" : "down";
+  const direction: "down" | "up" | "none" =
+    !delta || flat ? "none" : delta.deltaAbs > 0 ? "up" : "down";
   const Icon = direction === "down" ? TrendingDown : direction === "up" ? TrendingUp : Minus;
   const tone =
     direction === "down" ? "text-mint-deep" : direction === "up" ? "text-warning" : "text-ink/50";
@@ -60,16 +67,17 @@ export default function StapleCard({
     productDescription: string;
     altDescription: string | null;
     altPrice: number | null;
+    category: string | null;
+    size: string | null;
+    alternatives: Alternative[];
   } | null;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
   if (!latest) {
     return (
       <section className="rounded-2xl bg-card-tint p-5 shadow-sm">
-        <h2 className="text-lg font-bold capitalize text-ink">
-          <Link href={`/staple/${id}`} className="hover:underline">
-            {searchTerm}
-          </Link>
-        </h2>
+        <h2 className="text-lg font-bold capitalize text-ink">{searchTerm}</h2>
         <p className="mt-2 text-sm text-ink/50">
           Waiting for the first price check. Prices are collected once a day.
         </p>
@@ -80,72 +88,104 @@ export default function StapleCard({
   const yesterday = priceOnDaysAgo(snapshots, 1, now);
   const lastWeek = priceOnDaysAgo(snapshots, 7, now);
 
-  // Oldest-first prices for the trend line.
+  // Oldest-first prices for the collapsed trend line.
   const series = [...snapshots]
     .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime())
     .map((s) => s.price);
   const points = sparklinePoints(series, 240, 40);
   const endY = points ? points.split(" ").at(-1)?.split(",")[1] : undefined;
 
+  const panelId = `staple-panel-${id}`;
+
   return (
-    <section className="rounded-2xl bg-card-tint p-5 shadow-sm">
-      <div className="flex items-baseline justify-between gap-4">
-        <h2 className="text-lg font-bold capitalize text-ink">
-          <Link href={`/staple/${id}`} className="hover:underline">
-            {searchTerm}
-          </Link>
-        </h2>
-        <div className="text-2xl font-extrabold text-ink">${latest.price.toFixed(2)}</div>
-      </div>
+    <section className="rounded-2xl bg-card-tint shadow-sm">
+      <button
+        type="button"
+        onClick={() => setExpanded((open) => !open)}
+        aria-expanded={expanded}
+        aria-controls={panelId}
+        className="w-full cursor-pointer p-5 text-left"
+      >
+        <div className="flex items-start gap-3">
+          <CategoryBadge category={latest.category} />
 
-      <p className="mt-1 text-sm text-ink/60">{latest.productDescription}</p>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-4">
+              <h2 className="text-lg font-bold capitalize text-ink">{searchTerm}</h2>
+              <div className="text-2xl font-extrabold text-ink">
+                ${latest.price.toFixed(2)}
+              </div>
+            </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-4">
-        <DeltaBadge label="Yesterday" current={latest.price} previous={yesterday} />
-        <DeltaBadge label="Last week" current={latest.price} previous={lastWeek} secondary />
-      </div>
+            <p className="mt-1 text-sm text-ink/60">
+              {latest.productDescription}
+              {latest.size && <span className="text-ink/40"> · {latest.size}</span>}
+            </p>
 
-      {points ? (
-        <div className="mt-4 h-10">
-          <svg
-            viewBox="0 0 240 40"
-            className="h-full w-full"
-            preserveAspectRatio="none"
-            role="img"
-            aria-label={`14-day price trend for ${searchTerm}`}
-          >
-            <path d="M0 36H240" stroke="currentColor" className="text-ink/10" strokeWidth="1" />
-            <polyline
-              points={points}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
-              className="text-mint-deep"
-            />
-            {endY && <circle cx="240" cy={endY} r="3" fill="currentColor" className="text-mint-deep" />}
-          </svg>
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <DeltaBadge label="Yesterday" current={latest.price} previous={yesterday} />
+              <DeltaBadge label="Last week" current={latest.price} previous={lastWeek} secondary />
+            </div>
+
+            {points ? (
+              <div className="mt-4 h-10">
+                <svg
+                  viewBox="0 0 240 40"
+                  className="h-full w-full"
+                  preserveAspectRatio="none"
+                  role="img"
+                  aria-label={`14-day price trend for ${searchTerm}`}
+                >
+                  <path d="M0 36H240" stroke="currentColor" className="text-ink/10" strokeWidth="1" />
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                    className="text-mint-deep"
+                  />
+                  {endY && <circle cx="240" cy={endY} r="3" fill="currentColor" className="text-mint-deep" />}
+                </svg>
+              </div>
+            ) : (
+              <p className="mt-4 text-xs text-ink/40">
+                Trend line appears once there are two days of prices.
+              </p>
+            )}
+
+            {latest.altDescription && latest.altPrice != null && (
+              <div className="mt-4 flex items-center gap-3 rounded-xl bg-cream px-3.5 py-3 text-sm">
+                <span
+                  className="grid size-7 shrink-0 place-items-center rounded-full bg-mint/30 text-mint-deep"
+                  aria-hidden="true"
+                >
+                  <Tag className="size-3.5" strokeWidth={2.5} />
+                </span>
+                <p className="min-w-0 leading-5 text-ink/80">
+                  <span className="font-bold">Cheaper option</span> · {latest.altDescription} —{" "}
+                  <strong>${latest.altPrice.toFixed(2)}</strong>
+                </p>
+              </div>
+            )}
+
+            <p className="mt-3 flex items-center justify-center gap-1 text-xs font-medium text-ink/50">
+              {expanded ? "Hide history" : "History & alternatives"}
+              <ChevronDown
+                aria-hidden="true"
+                className={`size-3.5 transition-transform ${expanded ? "rotate-180" : ""}`}
+              />
+            </p>
+          </div>
         </div>
-      ) : (
-        <p className="mt-4 text-xs text-ink/40">
-          Trend line appears once there are two days of prices.
-        </p>
-      )}
+      </button>
 
-      {latest.altDescription && latest.altPrice != null && (
-        <div className="mt-4 flex items-center gap-3 rounded-xl bg-cream px-3.5 py-3 text-sm">
-          <span
-            className="grid size-7 shrink-0 place-items-center rounded-full bg-mint/30 text-mint-deep"
-            aria-hidden="true"
-          >
-            <Tag className="size-3.5" strokeWidth={2.5} />
-          </span>
-          <p className="min-w-0 leading-5 text-ink/80">
-            <span className="font-bold">Cheaper option</span> · {latest.altDescription} —{" "}
-            <strong>${latest.altPrice.toFixed(2)}</strong>
-          </p>
+      {expanded && (
+        <div id={panelId} className="space-y-5 border-t border-ink/10 px-5 pb-5 pt-4">
+          <PriceChart snapshots={snapshots} label={searchTerm} />
+          <AlternativesList alternatives={latest.alternatives} currentPrice={latest.price} />
         </div>
       )}
     </section>

@@ -4,6 +4,7 @@ import StapleCard from "./StapleCard";
 import StapleForm from "./onboarding/StapleForm";
 import NoseLogo from "./NoseLogo";
 import type { Snapshot } from "@/lib/dashboard";
+import type { Alternative } from "./AlternativesList";
 
 // Always read fresh from the database — a cached dashboard defeats the purpose.
 export const dynamic = "force-dynamic";
@@ -17,8 +18,11 @@ type SnapshotRow = {
   price: number;
   captured_at: string;
   product_description: string;
+  product_size: string | null;
+  product_category: string | null;
   alt_product_description: string | null;
   alt_price: number | null;
+  alternatives: Alternative[] | null;
 };
 
 export default async function Home() {
@@ -52,7 +56,9 @@ export default async function Home() {
     staples.map(async (staple) => {
       const { data } = await supabase
         .from("price_snapshots")
-        .select("price, captured_at, product_description, alt_product_description, alt_price")
+        .select(
+          "price, captured_at, product_description, product_size, product_category, alt_product_description, alt_price, alternatives"
+        )
         .eq("staple_id", staple.id)
         .order("captured_at", { ascending: false })
         .limit(14);
@@ -73,6 +79,11 @@ export default async function Home() {
               productDescription: newest.product_description,
               altDescription: newest.alt_product_description,
               altPrice: newest.alt_price == null ? null : Number(newest.alt_price),
+              category: newest.product_category,
+              size: newest.product_size,
+              // Snapshots written before the multi-alternatives migration have no
+              // `alternatives` — an empty list is the correct rendering, not an error.
+              alternatives: newest.alternatives ?? [],
             }
           : null,
       };
@@ -89,7 +100,7 @@ export default async function Home() {
           <h1 className="text-4xl font-extrabold text-ink">PriceSniff</h1>
         </div>
         <p className="mt-2 text-sm text-ink/60">
-          Tracking {staples.length} staple{staples.length === 1 ? "" : "s"} near{" "}
+          Tracking {staples.length} item{staples.length === 1 ? "" : "s"} near{" "}
           {watcher.zip_code} · checked once daily
         </p>
       </header>
@@ -109,7 +120,7 @@ export default async function Home() {
 
       <footer className="mt-10 text-center">
         <Link href="/onboarding" className="text-sm font-medium text-ink/60 underline">
-          Change my zip or staples
+          Change my zip or items
         </Link>
       </footer>
     </main>
