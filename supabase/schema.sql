@@ -23,10 +23,14 @@ create table price_snapshots (
   staple_id uuid not null references staples(id) on delete cascade,
   product_id text not null,         -- Kroger productId of the matched item
   product_description text not null,
+  product_brand text,               -- Kroger brand, e.g. "Simple Truth"
+  product_size text,                -- package size, e.g. "1 gal"
+  product_category text,            -- Kroger category, drives the card's icon
   price numeric not null,
-  alt_product_id text,              -- cheapest same-search-term alternative, stored daily
+  alt_product_id text,              -- cheapest alternative; backs the collapsed pill
   alt_product_description text,
   alt_price numeric,
+  alternatives jsonb,               -- up to 3 cheaper alternatives for the expanded card
   captured_at timestamptz not null default now()
 );
 
