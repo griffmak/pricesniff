@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { detectPriceSpike, cheapestAlternative } from "./priceWatch";
+import { detectPriceSpike, cheapestAlternative, topAlternatives } from "./priceWatch";
 import type { KrogerProduct } from "./kroger";
 
 describe("detectPriceSpike", () => {
@@ -59,5 +59,52 @@ describe("cheapestAlternative", () => {
       { productId: "B", description: "Same price", price: 3.0, brand: null, size: null, category: null },
     ];
     expect(cheapestAlternative(products, "A", 3.0)).toBeNull();
+  });
+});
+
+const product = (
+  id: string,
+  price: number,
+  extra: Partial<KrogerProduct> = {}
+): KrogerProduct => ({
+  productId: id,
+  description: `Product ${id}`,
+  price,
+  brand: null,
+  size: null,
+  category: null,
+  ...extra,
+});
+
+describe("topAlternatives", () => {
+  it("returns up to 3 cheaper alternatives, cheapest first", () => {
+    const products = [
+      product("A", 5.0),
+      product("B", 3.0),
+      product("C", 4.0),
+      product("D", 1.0),
+      product("E", 2.0),
+    ];
+    const result = topAlternatives(products, "A", 5.0);
+    expect(result.map((p) => p.productId)).toEqual(["D", "E", "B"]);
+  });
+
+  it("excludes the tracked product even when it is the cheapest", () => {
+    const products = [product("A", 1.0), product("B", 2.0)];
+    expect(topAlternatives(products, "A", 1.0)).toEqual([]);
+  });
+
+  it("excludes alternatives that are not strictly cheaper than the tracked price", () => {
+    const products = [product("A", 3.0), product("B", 3.0), product("C", 4.0)];
+    expect(topAlternatives(products, "A", 3.0)).toEqual([]);
+  });
+
+  it("returns fewer than 3 when fewer qualify", () => {
+    const products = [product("A", 5.0), product("B", 4.0)];
+    expect(topAlternatives(products, "A", 5.0).map((p) => p.productId)).toEqual(["B"]);
+  });
+
+  it("returns an empty array when there are no other products", () => {
+    expect(topAlternatives([product("A", 5.0)], "A", 5.0)).toEqual([]);
   });
 });
