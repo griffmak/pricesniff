@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { searchProducts, getProductById } from "@/lib/kroger";
-import { detectPriceSpike, cheapestAlternative } from "@/lib/priceWatch";
+import { searchProducts, getProductById, type KrogerProduct } from "@/lib/kroger";
+import { detectPriceSpike, cheapestAlternative, topAlternatives } from "@/lib/priceWatch";
 import { sendPushNotification } from "@/lib/push";
 
 const supabase = createClient(
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     }>) {
       checked++;
 
-      let tracked: { productId: string; description: string; price: number };
+      let tracked: KrogerProduct;
       let products;
 
       if (staple.product_id) {
@@ -64,15 +64,23 @@ export async function GET(req: NextRequest) {
       // Computed once per run and stored, so the dashboard never needs a live
       // Kroger call to show a cheaper swap.
       const swap = cheapestAlternative(products, tracked.productId, tracked.price);
+      // The expanded card shows a side-by-side comparison, so store the top few
+      // rather than only the single cheapest. `swap` is still written separately —
+      // it backs the collapsed card's pill and every historical row already has it.
+      const comparisons = topAlternatives(products, tracked.productId, tracked.price);
 
       await supabase.from("price_snapshots").insert({
         staple_id: staple.id,
         product_id: tracked.productId,
         product_description: tracked.description,
+        product_brand: tracked.brand,
+        product_size: tracked.size,
+        product_category: tracked.category,
         price: tracked.price,
         alt_product_id: swap?.productId ?? null,
         alt_product_description: swap?.description ?? null,
         alt_price: swap?.price ?? null,
+        alternatives: comparisons.length > 0 ? comparisons : null,
       });
 
       const { isSpike, percentChange } = detectPriceSpike({
