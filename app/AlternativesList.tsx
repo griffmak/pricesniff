@@ -10,8 +10,8 @@ export type Alternative = {
   category: string | null;
 };
 
-function krogerSearchUrl(description: string): string {
-  return `https://www.kroger.com/search?query=${encodeURIComponent(description)}`;
+function krogerProductUrl(productId: string): string {
+  return `https://www.kroger.com/p/-/${productId}`;
 }
 
 export default function AlternativesList({
@@ -41,7 +41,7 @@ export default function AlternativesList({
           return (
             <li key={alt.productId} className="rounded-xl bg-cream p-3">
               <a
-                href={krogerSearchUrl(alt.description)}
+                href={krogerProductUrl(alt.productId)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block hover:underline"
